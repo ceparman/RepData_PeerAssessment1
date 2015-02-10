@@ -5,21 +5,282 @@ output:
     keep_md: true
 ---
 
+***
+## Project Creation
+***
 
+Repository forked from rdpeng/RepData_PeerAssessment1 on "2015-02-10"
+
+### Load some packages
+```{r}
+library(data.table)
+library(lattice)
+```
+
+***
 ## Loading and preprocessing the data
+***
+###unzip file and verify file size
 
+Load Data from provided file "activity.zip" to create activity.csv
 
+```{r echo = TRUE}
+unzip("activity.zip")
 
+#verify file size
+
+file.info("activity.csv")
+
+```
+
+### Load data into data.table "activity"
+
+```{r echo = TRUE}
+
+activity<-as.data.table(read.csv("activity.csv"))
+
+#And check data loaded
+
+head(activity)
+
+```
+
+For this section we will assume that days with NA values for activity$steps are to be removed.
+
+```{r echo = TRUE}
+
+activity<-activity[steps != "NA"]
+
+#and check activity structure
+
+head(activity)
+
+```
+
+***
 ## What is mean total number of steps taken per day?
+***
+
+### Calculate the total steps per day
+
+We will use data.table functions to get total steps per day
+
+```{r}
+stepsPerDay <-activity[,sum(steps),by=date]
+
+#And clean set the column name to something useful
+
+setnames(stepsPerDay,"V1","TotalSteps")
+
+names(stepsPerDay)
+
+```
+
+###Now make a histogram of the total steps per day
 
 
+```{r}
+h<-hist(stepsPerDay$TotalSteps,breaks=20)
 
+```
+
+###Calculate mean and median total steps per day
+
+We will now use the summary function to get the mean and median (along with a few other parameters)
+
+```{r}
+stats<-summary(stepsPerDay$TotalSteps)
+```
+
+
+The mean numbers of steps per data is `r stats["Mean"]` and the median is `r stats["Median"]`
+
+
+***
 ## What is the average daily activity pattern?
+***
+
+### Create new averages by intervals
+
+```{r}
+stepsPerInterval <-activity[,mean(steps),by=interval]
+
+#And clean set the column name to something useful
+
+setnames(stepsPerInterval,"V1","MeanSteps")
+
+names(stepsPerInterval)
+
+```
+
+### Now plots the results
+
+```{r}
+plot(stepsPerInterval$interval,stepsPerInterval$MeanSteps,
+     xlab="5 min. Interval", ylab ="Mean Steps",type="l")
+
+```
+
+### Find interval with max. number of steps
+
+```{r}
+
+maxInterval<-stepsPerInterval$interval[
+             which.max(stepsPerInterval$MeanSteps)]
+```
 
 
+The interval with the maximum number of averages steps if `r maxInterval`
 
+***
 ## Imputing missing values
+***
+
+### lets start with a fresh copy of the data
+
+activity<-as.data.table(read.csv("activity.csv"))
+
+### create table of is.na results
+
+```{r}
+counts<-table(is.na(activity$steps))
+```
+
+there are `r counts[TRUE]` rows with NA values for the steps variable
+
+We should check the other column
+
+```{r}
+table(is.na(activity$date))
+
+table(is.na(activity$interval))
+
+```
+
+Only the steps column has NA values
+
+### Fill in NA values with the interval average
+
+Here are the steps
+
+1. create a subset with NA values "missing" and a subset that did have values "notMissing"
+2. replace steps values in "missing" with means interval values
+3. merge the new "missing"" with "notMissing"
+4. sort to original order
+
+```{r}
+# step 1
+missing<-activity[is.na(steps)]
+
+notMissing<-activity[!is.na(steps)]
+
+#step 2
+missing<-merge(missing,stepsPerInterval,by ="interval")
+
+#clean up columns
+
+missing[, steps := NULL ]
+
+setnames(missing,"MeanSteps","steps")
+
+#Setp 3
+
+imputed<-rbind(missing,notMissing)
+
+#step 4
+
+imputed<-imputed[order(imputed$date,imputed$interval)]
+
+
+```
+
+### now lets comare the results to the first section
+
+Calculate new total setps per day
+
+```{r}
+istepsPerDay <-imputed[,sum(steps),by=date]
+
+#And clean set the column name to something useful
+
+setnames(istepsPerDay,"V1","TotalSteps")
+
+names(istepsPerDay)
+
+```
+
+###Now make a histogram of the total steps per day
+
+
+```{r}
+hi<-hist(istepsPerDay$TotalSteps,breaks=20)
+
+```
+
+###Calculate mean and median total steps per day
+
+We will now use the summary function to get the mean and median (along with a few other parameters)
+
+```{r}
+istats<-summary(istepsPerDay$TotalSteps)
+```
+
+Let plot the histograms together
+
+```{r}
+
+plot(h,main ="With NA removed")
+plot(hi, main ="Imputed")
+
+```
+
+Beacuse we added steps we get a differnt histogram but we see the means and medians are the same.
+
+
+Data Set   |  Mean                | Median
+---------- |  --------------------| ---------------------
+NA removed |  `r stats["Mean"]`   | `r stats["Median"]` 
+Imputed    |  `r istats["Mean"] ` | `r istats["Median"]`
 
 
 
+***
 ## Are there differences in activity patterns between weekdays and weekends?
+***
+
+###Starting with data.table "imputed"
+
+### create a new column "weekday" that is TRUE for weekdays and FALSe for weekends
+
+```{r}
+imputed[, weekday := 
+          as.factor(!weekdays(as.Date(imputed$date))
+          %in% c("Sunday"  ,"Saturday"))
+      ]
+
+
+head(imputed)  
+
+```
+
+
+And now for the big plot
+
+```{r}
+intervalWeedayMeans<-imputed[,mean(steps),by=.(interval,weekday)]
+
+library(lattice)
+
+xyplot(intervalWeedayMeans$V1~ intervalWeedayMeans$interval |
+        intervalWeedayMeans$weekday, type="l",layout=c(1,2) ,
+        xlab="interval" , ylab= "Mean Steps",
+        strip=strip.custom(factor.levels=c("Weekdays","Weekends"))
+       )
+
+
+
+```
+
+
+Created `r Sys.Date()` by Craig Parman
+
