@@ -1,8 +1,10 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
+title: 'Reproducible Research: Peer Assessment 1'
+output:
   html_document:
-    keep_md: true
+    keep_md: yes
+  pdf_document: default
+  word_document: default
 ---
 
 ***
@@ -80,7 +82,9 @@ names(stepsPerDay)
 
 
 ```{r}
-h<-hist(stepsPerDay$TotalSteps,breaks=20)
+h<-hist(stepsPerDay$TotalSteps,breaks=20,
+        xlab="Total Steps per Day" ,main=""
+      )
 
 ```
 
@@ -148,7 +152,7 @@ counts<-table(is.na(activity$steps))
 
 there are `r counts[TRUE]` rows with NA values for the steps variable
 
-We should check the other column
+We should check the other columns
 
 ```{r}
 table(is.na(activity$date))
@@ -194,9 +198,9 @@ imputed<-imputed[order(imputed$date,imputed$interval)]
 
 ```
 
-### now lets comare the results to the first section
+### now lets compare the results to the first section
 
-Calculate new total setps per day
+Calculate new total steps per day
 
 ```{r}
 istepsPerDay <-imputed[,sum(steps),by=date]
@@ -209,11 +213,11 @@ names(istepsPerDay)
 
 ```
 
-###Now make a histogram of the total steps per day
+###Now calculate a histogram of the total steps per day but plot later.
 
 
 ```{r}
-hi<-hist(istepsPerDay$TotalSteps,breaks=20)
+hi<-hist(istepsPerDay$TotalSteps,breaks=20,plot=FALSE)
 
 ```
 
@@ -229,12 +233,12 @@ Let plot the histograms together
 
 ```{r}
 
-plot(h,main ="With NA removed")
-plot(hi, main ="Imputed")
+plot(h,xlab="Total Steps",main ="With NA removed")
+plot(hi,xlab="Total Steps", main ="Imputed")
 
 ```
 
-Beacuse we added steps we get a differnt histogram but we see the means and medians are the same.
+Because we added steps we get a different histogram but we see the means and medians are the same.
 
 
 Data Set   |  Mean                | Median
@@ -269,7 +273,6 @@ And now for the big plot
 ```{r}
 intervalWeedayMeans<-imputed[,mean(steps),by=.(interval,weekday)]
 
-library(lattice)
 
 xyplot(intervalWeedayMeans$V1~ intervalWeedayMeans$interval |
         intervalWeedayMeans$weekday, type="l",layout=c(1,2) ,
